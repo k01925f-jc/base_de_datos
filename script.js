@@ -1,20 +1,4 @@
-// ══════════════════════════════════════════════
-//  Base de Datos II - UPLA (Drive + Supabase)
-// ══════════════════════════════════════════════
-
-// ==================== SUPABASE CONFIG ====================
-const SUPABASE_URL = 'https://buqrpqtwzujqgwyzmqri.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_JmrFVaGF6-fDZBMstEwjFw_T9-s6hUY';
-
-let supabaseClient = null;
-
-try {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase cargado correctamente');
-} catch (error) {
-    console.error('❌ Error al cargar Supabase:', error);
-}
-// ========================================================
+// ── Estado global ──
 
 const unitInfo = {
   1: { title: 'Introducción y Fundamentos', desc: 'Conceptos básicos, historia y tipos de bases de datos.' },
@@ -34,7 +18,7 @@ const files = {
 let currentUnit = 1;
 let currentAdminUnit = 1;
 
-// ── Navegación ──
+// ── Navegación entre páginas ──
 function goTo(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -84,11 +68,12 @@ function doLoginModal() {
   }
 }
 
+// ── Logout ──
 function doLogout() {
   goTo('home');
 }
 
-// ── Vista pública ──
+// ── Vista pública: semanas con archivos descargables y mensaje bonito ──
 function renderWeeks(unit) {
   const c = document.getElementById('weeks-container');
   c.innerHTML = '';
@@ -96,19 +81,25 @@ function renderWeeks(unit) {
   for (let w = 1; w <= 4; w++) {
     const fs = files[unit][w];
 
-    let fileHTML = fs.length ? fs.map(f => `
-      <a href="${f.url}" target="_blank" rel="noopener" class="file-item downloadable">
-        <span class="file-icon">📄</span>
-        <span class="file-name">${f.name}</span>
-        <span class="download-icon">↓</span>
-      </a>
-    `).join('') : `
-      <div class="empty-state">
-        <div class="empty-icon">📂</div>
-        <p class="empty-text">Aún no hay archivos en esta semana</p>
-        <p class="empty-subtext">El docente subirá el material pronto</p>
-      </div>
-    `;
+    let fileHTML = '';
+
+    if (fs.length > 0) {
+      fileHTML = fs.map(f => `
+        <a href="${f.url}" download="${f.name}" class="file-item downloadable">
+          <span class="file-icon">📄</span>
+          <span class="file-name">${f.name}</span>
+          <span class="download-icon">↓</span>
+        </a>
+      `).join('');
+    } else {
+      fileHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📂</div>
+          <p class="empty-text">Aún no hay archivos en esta semana</p>
+          <p class="empty-subtext">El docente subirá el material pronto</p>
+        </div>
+      `;
+    }
 
     c.innerHTML += `
       <div class="week-card">
@@ -120,135 +111,70 @@ function renderWeeks(unit) {
   }
 }
 
-// ── Admin: renderizar semanas ──
+// ── Admin: seleccionar unidad ──
+function selectAdminUnit(num, btn) {
+  currentAdminUnit = num;
+  document.querySelectorAll('.admin-unit-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAdminWeeks(num);
+}
+
+// ── Admin: renderizar semanas con upload ──
 function renderAdminWeeks(unit) {
   const c = document.getElementById('admin-weeks-container');
   c.innerHTML = '';
-
   for (let w = 1; w <= 4; w++) {
+    const id = `upload-${unit}-${w}`;
     c.innerHTML += `
       <div class="admin-week-card">
         <h4>Semana ${w} <span>U${unit}</span></h4>
-        
-        <!-- Botón Supabase -->
-        <button onclick="uploadToSupabase(${unit}, ${w})" 
-                class="btn-add-link" 
-                style="background:#22c55e; color:#000; margin-bottom:12px; width:100%; font-weight:600;">
-          📤 Subir archivo a Supabase
-        </button>
-
-        <!-- Opción Google Drive -->
-        <div class="link-form">
-          <input type="text" id="name-${unit}-${w}" placeholder="Nombre del archivo" class="link-input">
-          <input type="url" id="url-${unit}-${w}" placeholder="Link de Google Drive" class="link-input">
-          <button onclick="addLink(${unit}, ${w})" class="btn-add-link">+ Agregar link Drive</button>
+        <div class="upload-area" onclick="document.getElementById('${id}').click()">
+          <div class="up-icon">⬆</div>
+          <p>Haz clic para subir un archivo</p>
+          <input type="file" id="${id}" multiple onchange="handleUpload(event, ${unit}, ${w})" />
         </div>
-
         <div class="uploaded-list" id="list-${unit}-${w}"></div>
       </div>`;
   }
-
-  for (let w = 1; w <= 4; w++) refreshList(unit, w);
+  for (let w = 1; w <= 4; w++) {
+    refreshList(unit, w);
+  }
 }
 
-// ── Subir a Supabase (CORREGIDO) ──
-async function uploadToSupabase(unit, week) {
-  if (!supabaseClient) {
-    alert("Supabase no se cargó correctamente. Revisa la consola (F12)");
-    return;
-  }
-
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".pdf,.doc,.docx,.ppt,.pptx,.zip,.rar";
-
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (!confirm(`¿Subir "${file.name}" a Supabase?`)) return;
-
-    try {
-      const filePath = `U${unit}/Semana${week}/${Date.now()}-${file.name}`;
-
-      const { error } = await supabaseClient.storage
-        .from('materiales')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) throw error;
-
-      const { data: urlData } = supabaseClient.storage
-        .from('materiales')
-        .getPublicUrl(filePath);
-
-      files[unit][week].push({
-        name: file.name,
-        url: urlData.publicUrl
-      });
-
-      refreshList(unit, week);
-      if (currentUnit === unit) renderWeeks(unit);
-
-      alert(`✅ Archivo "${file.name}" subido correctamente a Supabase!`);
-
-    } catch (err) {
-      console.error(err);
-      alert("Error al subir:\n" + (err.message || err));
+// ── Subir archivo ──
+function handleUpload(e, unit, week) {
+  const fs = Array.from(e.target.files);
+  fs.forEach(f => {
+    if (!files[unit][week].find(x => x.name === f.name)) {
+      files[unit][week].push({ name: f.name, url: URL.createObjectURL(f) });
     }
-  };
-
-  input.click();
-}
-
-// ── Agregar link de Drive ──
-function addLink(unit, week) {
-  const nameEl = document.getElementById(`name-${unit}-${week}`);
-  const urlEl = document.getElementById(`url-${unit}-${week}`);
-  const name = nameEl.value.trim();
-  let url = urlEl.value.trim();
-
-  if (!name || !url) {
-    alert("Completa el nombre y el link de Drive");
-    return;
-  }
-
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (match) url = `https://drive.google.com/file/d/${match[1]}/view`;
-
-  files[unit][week].push({ name, url });
-  nameEl.value = '';
-  urlEl.value = '';
+  });
+  e.target.value = '';
   refreshList(unit, week);
+  if (currentUnit === unit) renderWeeks(unit);
 }
 
-// ── Refrescar lista ──
+// ── Actualizar lista de archivos subidos ──
 function refreshList(unit, week) {
   const el = document.getElementById(`list-${unit}-${week}`);
   if (!el) return;
-
   const fs = files[unit][week];
   el.innerHTML = fs.length ? fs.map((f, i) => `
     <div class="uploaded-item">
-      <span style="color:var(--accent);">📄</span>
+      <span style="color:var(--accent); font-size:0.85rem;">📄</span>
       <span class="fname">${f.name}</span>
-      <button class="del-btn" onclick="deleteFile(${unit},${week},${i})">✕</button>
-    </div>
-  `).join('') : '';
+      <button class="del-btn" onclick="deleteFile(${unit},${week},${i})" title="Eliminar">✕</button>
+    </div>`).join('') : '';
 }
 
 // ── Eliminar archivo ──
 function deleteFile(unit, week, idx) {
-  if (confirm('¿Eliminar este archivo?')) {
-    files[unit][week].splice(idx, 1);
-    refreshList(unit, week);
-    if (currentUnit === unit) renderWeeks(unit);
-  }
+  files[unit][week].splice(idx, 1);
+  refreshList(unit, week);
+  if (currentUnit === unit) renderWeeks(unit);
 }
 
-// ── Contacto ──
+// ── Formulario de contacto ──
 function sendContact() {
   alert('¡Mensaje enviado! Nos pondremos en contacto pronto.');
 }
