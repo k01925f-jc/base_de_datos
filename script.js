@@ -1,146 +1,220 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Base de Datos II - UPLA</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
-</head>
-<body>
+// ══════════════════════════════════════════════
+//  Sin backend. Los links se guardan en este
+//  navegador. Siempre administra desde la
+//  misma computadora y todo funciona perfecto.
+// ══════════════════════════════════════════════
 
-<!-- ============ NAV ============ -->
-<nav>
-  <div class="nav-logo" onclick="goTo('home')">
-  <img src="Logo.png" alt="Logo UPLA" class="upla-icon">
-  UPLA<span>:</span>Base de datos II
-</div>
-  <div class="nav-menu">
-    <a onclick="goToUnit(1)">Unidad 1</a>
-    <a onclick="goToUnit(2)">Unidad 2</a>
-    <a onclick="goToUnit(3)">Unidad 3</a>
-    <a onclick="goToUnit(4)">Unidad 4</a>
-    <a onclick="scrollToSection('contacto')">Contacto</a>
-  </div>
-  <div class="nav-right">
-    <button class="btn-login-nav" onclick="showLoginModal()">Login Admin</button>
-  </div>
-</nav>
+const unitInfo = {
+  1: { title: 'Introducción y Fundamentos',  desc: 'Conceptos básicos, historia y tipos de bases de datos.' },
+  2: { title: 'Modelado de Datos',           desc: 'Diagramas entidad-relación, normalización y esquemas.' },
+  3: { title: 'SQL y Consultas',             desc: 'Lenguaje SQL, DDL, DML, subconsultas y joins.' },
+  4: { title: 'Administración y Seguridad',  desc: 'Gestión de usuarios, índices, respaldo y rendimiento.' },
+};
 
-<!-- ===================== PAGE: HOME ===================== -->
-<div id="page-home" class="page active">
-  <div class="hero">
-    <div class="grid-bg"></div>
-    <div class="hero-tag">Curso de Base de Datos</div>
-    <h1>Base de <span>Datos II</span></h1>
-    <p>Accede al material académico organizado por unidades y semanas. Aprende fundamentos, diseño, modelado y gestión de bases de datos.</p>
-  </div>
+let currentUnit = 1;
 
-  <hr class="divider">
+// ── Cargar y guardar en localStorage ──
+function loadFiles() {
+  const saved = localStorage.getItem('bd2_files');
+  return saved ? JSON.parse(saved) : {
+    1: { 1: [], 2: [], 3: [], 4: [] },
+    2: { 1: [], 2: [], 3: [], 4: [] },
+    3: { 1: [], 2: [], 3: [], 4: [] },
+    4: { 1: [], 2: [], 3: [], 4: [] },
+  };
+}
 
-  <div id="presentacion" class="section" style="max-width:900px; margin:0 auto;">
-    <div class="section-title">// 01 — Presentación</div>
-    <h2>¿Qué aprenderás en este curso?</h2>
-    <p>Este curso de Base de Datos está diseñado para brindarte los conocimientos fundamentales sobre el diseño, implementación y gestión de bases de datos relacionales y no relacionales.</p>
-    <div class="about-grid">
-      <div class="about-card">
-        <div class="icon">🗄️</div>
-        <h4>Fundamentos</h4>
-        <p>Conceptos básicos de bases de datos, modelos relacionales, entidades y atributos.</p>
-      </div>
-      <div class="about-card">
-        <div class="icon">📐</div>
-        <h4>Modelado</h4>
-        <p>Diagramas ER, normalización de datos y diseño de esquemas eficientes.</p>
-      </div>
-      <div class="about-card">
-        <div class="icon">💡</div>
-        <h4>SQL Avanzado</h4>
-        <p>Consultas complejas, joins, subconsultas, funciones y procedimientos almacenados.</p>
-      </div>
-      <div class="about-card">
-        <div class="icon">🔐</div>
-        <h4>Administración</h4>
-        <p>Seguridad, respaldo, rendimiento y gestión de usuarios en sistemas de BD.</p>
-      </div>
-    </div>
-  </div>
+function saveFiles(files) {
+  localStorage.setItem('bd2_files', JSON.stringify(files));
+}
 
-  <hr class="divider">
+// ── Navegación ──
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  window.scrollTo(0, 0);
+}
 
-  <div id="contacto" class="section" style="max-width:900px; margin:0 auto;">
-    <div class="section-title">// 02 — Contacto</div>
-    <h2>¿Tienes alguna pregunta?</h2>
-    <p>Estamos aquí para ayudarte. Completa el formulario y nos pondremos en contacto contigo a la brevedad.</p>
-    <div class="contact-form">
-      <div class="form-group">
-        <label>Nombre completo</label>
-        <input type="text" placeholder="Tu nombre" />
-      </div>
-      <div class="form-group">
-        <label>Correo electrónico</label>
-        <input type="email" placeholder="correo@ejemplo.com" />
-      </div>
-      <div class="form-group">
-        <label>Mensaje</label>
-        <textarea placeholder="Escribe tu consulta aquí..."></textarea>
-      </div>
-      <button class="btn-send" onclick="sendContact()">Enviar mensaje</button>
-    </div>
-  </div>
+function goToUnit(num) {
+  currentUnit = num;
+  document.getElementById('unit-num').textContent  = num;
+  document.getElementById('unit-desc').textContent = unitInfo[num].desc;
+  renderWeeks(num);
+  goTo('unit');
+}
 
-  <footer>DB.Academy &nbsp;·&nbsp; Base de Datos &copy; 2025</footer>
-</div>
+function scrollToSection(id) {
+  goTo('home');
+  setTimeout(() => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }, 100);
+}
 
-<!-- ===================== PAGE: UNIT ===================== -->
-<div id="page-unit" class="page">
-  <div class="unit-header">
-    <button class="back-btn" onclick="goTo('home')">← Volver</button>
-    <h1>Unidad <span id="unit-num">1</span></h1>
-    <p id="unit-desc" style="color:var(--muted);">Material de la unidad</p>
-  </div>
-  <div class="weeks-grid" id="weeks-container"></div>
-  <footer>DB.Academy &nbsp;·&nbsp; Base de Datos &copy; 2025</footer>
-</div>
+// ── Modal Login ──
+function showLoginModal() {
+  document.getElementById('login-modal').style.display = 'flex';
+  document.getElementById('modal-user').focus();
+}
 
-<!-- ===================== PAGE: ADMIN ===================== -->
-<div id="page-admin" class="page">
-  <div class="admin-header">
-    <div>
-      <h2>// Panel de Administrador</h2>
-      <div style="color:var(--muted); font-size:0.78rem; margin-top:0.3rem;">
-        Sube a Google Drive → copia el link → pégalo aquí
-      </div>
-    </div>
-    <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
-  </div>
-  <div class="admin-content">
-    <h3>// Selecciona una Unidad</h3>
-    <div class="admin-units">
-      <button class="admin-unit-tab active" onclick="selectAdminUnit(1, this)">Unidad 1</button>
-      <button class="admin-unit-tab" onclick="selectAdminUnit(2, this)">Unidad 2</button>
-      <button class="admin-unit-tab" onclick="selectAdminUnit(3, this)">Unidad 3</button>
-      <button class="admin-unit-tab" onclick="selectAdminUnit(4, this)">Unidad 4</button>
-    </div>
-    <div class="admin-weeks" id="admin-weeks-container"></div>
-  </div>
-  <footer>DB.Academy &nbsp;·&nbsp; Base de Datos &copy; 2025</footer>
-</div>
+function hideLoginModal() {
+  document.getElementById('login-modal').style.display = 'none';
+  document.getElementById('modal-user').value        = '';
+  document.getElementById('modal-pass').value        = '';
+  document.getElementById('modal-err').style.display = 'none';
+}
 
-<!-- ===================== LOGIN MODAL ===================== -->
-<div id="login-modal" class="modal">
-  <div class="modal-content">
-    <span class="modal-close" onclick="hideLoginModal()">✕</span>
-    <h3>// Acceso Administrador</h3>
-    <label>Usuario</label>
-    <input type="text" id="modal-user" placeholder="admin" />
-    <label>Contraseña</label>
-    <input type="password" id="modal-pass" placeholder="••••••" />
-    <button class="btn-login" onclick="doLoginModal()">Ingresar</button>
-    <div class="login-err" id="modal-err">Usuario o contraseña incorrectos</div>
-  </div>
-</div>
+function doLoginModal() {
+  const u = document.getElementById('modal-user').value.trim();
+  const p = document.getElementById('modal-pass').value.trim();
+  if (u === 'admin' && p === 'admin') {
+    hideLoginModal();
+    selectAdminUnit(1, document.querySelector('.admin-unit-tab'));
+    goTo('admin');
+  } else {
+    document.getElementById('modal-err').style.display = 'block';
+  }
+}
 
-<script src="script.js"></script>
-</body>
-</html>
+function doLogout() { goTo('home'); }
+
+// ── Vista pública ──
+function renderWeeks(unit) {
+  const files = loadFiles();
+  const c = document.getElementById('weeks-container');
+  c.innerHTML = '';
+
+  for (let w = 1; w <= 4; w++) {
+    const fs = files[unit][w] || [];
+
+    let fileHTML = fs.length
+      ? fs.map(f => `
+          <a href="${f.url}" target="_blank" rel="noopener" class="file-item downloadable">
+            <span class="file-icon">📄</span>
+            <span class="file-name">${f.name}</span>
+            <span class="download-icon">↓</span>
+          </a>`).join('')
+      : `<div class="empty-state">
+           <div class="empty-icon">📂</div>
+           <p class="empty-text">Aún no hay archivos en esta semana</p>
+           <p class="empty-subtext">El docente subirá el material pronto</p>
+         </div>`;
+
+    c.innerHTML += `
+      <div class="week-card">
+        <div class="week-num">0${w}</div>
+        <h3>Semana ${w}</h3>
+        <p>${unitInfo[unit].title}</p>
+        <div class="week-files">${fileHTML}</div>
+      </div>`;
+  }
+}
+
+// ── Admin: seleccionar unidad ──
+function selectAdminUnit(num, btn) {
+  document.querySelectorAll('.admin-unit-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAdminWeeks(num);
+}
+
+// ── Admin: renderizar semanas ──
+function renderAdminWeeks(unit) {
+  const c = document.getElementById('admin-weeks-container');
+  c.innerHTML = '';
+
+  for (let w = 1; w <= 4; w++) {
+    c.innerHTML += `
+      <div class="admin-week-card">
+        <h4>Semana ${w} <span>U${unit}</span></h4>
+
+        <div class="link-form">
+          <input
+            type="text"
+            id="name-${unit}-${w}"
+            placeholder="Nombre (ej: Clase 1 - Introducción.pdf)"
+            class="link-input"
+          />
+          <input
+            type="url"
+            id="url-${unit}-${w}"
+            placeholder="Pega aquí el link de Google Drive"
+            class="link-input"
+          />
+          <button class="btn-add-link" onclick="addLink(${unit}, ${w})">+ Agregar</button>
+        </div>
+
+        <div class="uploaded-list" id="list-${unit}-${w}"></div>
+      </div>`;
+  }
+
+  for (let w = 1; w <= 4; w++) refreshList(unit, w);
+}
+
+// ── Agregar link ──
+function addLink(unit, week) {
+  const nameEl = document.getElementById(`name-${unit}-${week}`);
+  const urlEl  = document.getElementById(`url-${unit}-${week}`);
+  const name   = nameEl.value.trim();
+  let   url    = urlEl.value.trim();
+
+  if (!name || !url) {
+    alert('Completa el nombre y el link antes de agregar.');
+    return;
+  }
+
+  // Convierte link de Google Drive a link directo de visualización
+  url = convertDriveLink(url);
+
+  const files = loadFiles();
+  if (!files[unit][week]) files[unit][week] = [];
+  files[unit][week].push({ name, url });
+  saveFiles(files);
+
+  nameEl.value = '';
+  urlEl.value  = '';
+  refreshList(unit, week);
+}
+
+// Convierte cualquier link de Google Drive a link de vista directa
+function convertDriveLink(url) {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) {
+    return `https://drive.google.com/file/d/${match[1]}/view`;
+  }
+  return url; // si no es Drive, lo deja igual
+}
+
+// ── Refrescar lista admin ──
+function refreshList(unit, week) {
+  const el = document.getElementById(`list-${unit}-${week}`);
+  if (!el) return;
+  const files = loadFiles();
+  const fs = files[unit][week] || [];
+  el.innerHTML = fs.length
+    ? fs.map((f, i) => `
+        <div class="uploaded-item">
+          <span style="color:var(--accent);">📄</span>
+          <span class="fname">${f.name}</span>
+          <button class="del-btn" onclick="deleteFile(${unit},${week},${i})">✕</button>
+        </div>`).join('')
+    : '';
+}
+
+// ── Eliminar ──
+function deleteFile(unit, week, idx) {
+  if (!confirm('¿Eliminar este archivo?')) return;
+  const files = loadFiles();
+  files[unit][week].splice(idx, 1);
+  saveFiles(files);
+  refreshList(unit, week);
+}
+
+// ── Contacto ──
+function sendContact() {
+  alert('¡Mensaje enviado! Nos pondremos en contacto pronto.');
+}
+
+// ── Init ──
+window.onload = () => {
+  selectAdminUnit(1, null);
+};
